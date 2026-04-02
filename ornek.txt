@@ -1,0 +1,344 @@
+T.C.
+KASTAMONU ÜNİVERSİTESİ
+MÜHENDİSLİK MİMARLIK FAKÜLTESİ
+BİLGİSAYAR MÜHENDİSLİĞİ
+DERS KODU VE DERS ADI: Nesneye Yönelik Programlama
+PROJE SAHİBİ: Emir Ensar Öztürk
+OKUL NO: 244410025
+KASTAMONU
+ 2026
+2. Özet
+EmirOS, sıfırdan geliştirilen ve x86 mimarisi üzerinde çalışan 32-bit monolitik bir işletim sistemi
+çekirdeği ve masaüstü ortamıdır. Bu proje kapsamında; Multiboot uyumlu bir önyükleme süreci,
+GDT/IDT tabanlı kesme ve segmentasyon yapısı, VBE framebuffer üzerinde çalışan grafik arayüz
+(GUI) sistemi, çoklu pencere yöneticisi (WM), sanal dosya sistemi (VFS) ve kullanıcı ile etkileşimi
+sağlayan bir kabuk (shell) geliştirilmiştir. Ayrıca sistem içerisinde birden fazla grafik tabanlı
+uygulama da yer almaktadır.
+Geliştirme sürecinde C (GNU99, freestanding) ve x86 Assembly dilleri kullanılmıştır. Derleme
+işlemleri GCC i386-elf araç zinciri ile gerçekleştirilmiş, sistem GRUB önyükleyici yardımıyla
+başlatılmış ve QEMU emülatörü üzerinde test edilmiştir. Proje Docker ortamında derlenerek ISO
+imajı haline getirilmiş olup, hem emülatör üzerinde hem de standart x86 sistemlerde çalışabilecek
+şekilde tasarlanmıştır.
+3. Giriş
+● PROJENİN AMACI:Bu projenin temel amacı, işletim sistemlerinin iç mimarisini uygulamalı olarak
+öğrenmek ve bu bilgileri pekiştirmektir. Bu doğrultuda, bir işletim sisteminin en temel katmanlarından
+başlanarak; donanım başlatma süreci, kesme yönetimi, bellek yapısı ve giriş/çıkış (I/O) işlemleri adım
+adım ele alınmıştır. Bu temel bileşenlerin üzerine grafik arayüz ve kullanıcı uygulamaları eklenerek,
+çalışabilir ve bütüncül bir masaüstü ortamı oluşturulması hedeflenmiştir.
+3.1 Kapsam
+EmirOS aşağıdaki özellik setini kapsamaktadır:
+ 32-bit korumalı mod (Protected Mode) x86 mimarisi
+ 1920x1080 çözünürlük, 32-bit TrueColor VBE çerçeve tamponu
+ Çoklu pencere yönetimi: sürükle, simge durumuna küçült/büyüt, z-sıralama
+ Sanal dosya sistemi (VFS): dizin ağacı, ls/cd/mkdir/touch/cat/write/rm komutları
+ Renkli terminal, kabuk (shell) ve komut geçmişi
+ Uygulamalar: Not Defteri, Hesap Makinesi, Dosya Yöneticisi, Sistem İzleyicisi,
+Paint, Oyun
+ PS/2 klavye ve fare desteği, PIT zamanlayıcı, CMOS saat, PC hoparlörü
+3.2 Kullanılan Teknolojiler
+4. Sistem Mimarisi
+• Çekirdek (KARNEL) yapısı: EmirOS, monolitik çekirdek mimarisi üzerine kurulmuştur. Bu yapıda;
+sürücüler, dosya sistemi, grafik arayüz (GUI) motoru ve pencere yöneticisi gibi tüm çekirdek bileşenleri
+tek bir adres alanı içerisinde çalışmaktadır.
+Bu yaklaşım, bileşenler arasındaki iletişimi hızlandırarak gecikmeyi minimum seviyeye indirir. Bu sayede
+özellikle grafik arayüzün sürekli güncellendiği durumlarda daha akıcı ve performanslı bir sistem elde
+edilmiştir.
+• Önyükleme (Bootloading) Süreci:
+Sistem, Multiboot v1 standardına uygun şekilde tasarlanmıştır. boot.s dosyasında yer alan .multiboot
+bölümünde magic number (0x1BADB002), bellek haritası talepleri ve VBE grafik moduna ait başlık bilgileri
+tanımlanmıştır.
+GRUB, bu bilgileri okuyarak sistemi 1920x1080 çözünürlükte, 32-bit doğrusal framebuffer modunda
+başlatır. Başlatma işleminin ardından BSS bölümünde 64 KiB’lik bir yığın (stack) alanı ayrılır ve _start
+etiketi, ESP yazmacını stack_top adresine yönlendirir.
+Daha sonra kontrol kernel_main() fonksiyonuna devredilir. Bu fonksiyon, EAX (magic number) ve EBX
+(multiboot struct) parametrelerini alarak donanım başlatma işlemlerini sıralı bir şekilde gerçekleştirir.
+• Bellek Yönetimi (Memory Management):
+ EmirOS, düz bellek modeli (Flat Memory Model) kullanmaktadır. GDT içerisinde; standart NULL
+segment, 0–4 GB aralığını kapsayan çekirdek kod ve veri segmentleri tanımlanmıştır. Granularite
+bayrağı 0xCF olarak ayarlanmış olup sistem 32-bit korumalı modda, 4 KB sayfa boyutu ile
+çalışmaktadır. Dinamik bellek ayırma (malloc) yerine, çekirdek içerisinde statik bir bellek havuzu tercih
+edilmiştir. Bu kapsamda VFS yapısı için 100 düğümden oluşan sabit boyutlu bir alan kullanılmaktadır.
+5. Temel Bileşenler ve Tasarım Kararları
+5.1 Süreç Yönetimi (Process Management)
+EmirOS’ta tam anlamlı bir çoklu süreç (multitasking) desteği henüz hayata geçirilmemiştir.
+Sistem, PIT (Programmable Interval Timer) aracılığıyla periyodik olarak tetiklenen görev
+mantığı üzerinden çalışmaktadır. Klavye ve fare gibi giriş aygıtlarından gelen olaylar ise olay
+tabanlı bir yaklaşımla ana döngü içinde işlenmektedir.
+Bu yapı, sistemin temel işlevlerini yerine getirmesi açısından yeterli olmakla birlikte, gelişmiş
+bir zamanlama algoritması içermemektedir. İleride Round Robin gibi zamanlama
+algoritmalarının sisteme entegre edilmesi planlanmaktadır.
+5.2 Sistem Çağrıları (System Calls)
+EmirOS’ta kullanıcı modu (user mode) ile çekirdek modu (kernel mode) arasındaki ayrım
+henüz uygulanmamıştır. Bu nedenle klasik anlamda bir sistem çağrısı mekanizması
+bulunmamaktadır; tüm sistem işlevleri doğrudan çekirdek fonksiyonları aracılığıyla
+gerçekleştirilmektedir.
+İlerleyen aşamalarda, yazılım kesmeleri (software interrupt) aracılığıyla geleneksel bir sistem
+çağrısı katmanının sisteme eklenmesi hedeflenmektedir.
+5.3 Dosya Sistemi (Disk Desteği)
+EmirOS’taki dosya sistemi şu an tamamen belleğe dayalı (in-memory) bir yapıda
+çalışmaktadır. Kalıcı disk desteği bulunmadığından sistem yeniden başlatıldığında tüm
+dosyalar ve dizin ağacı sıfırlanmaktadır.
+Gelecek sürümlerde FAT32 gibi bir dosya sistemi ile ATA disk sürücüsü eklenerek kalıcı
+depolama desteğinin sağlanması planlanmaktadır.
+5.4 Performans Gözlemleri
+Sistem, QEMU emülatörü üzerinde stabil ve akıcı bir biçimde çalışmaktadır. Grafik arayüzde
+göze çarpan bir gecikme yaşanmamış; çift tamponlama (double buffering) tekniği sayesinde
+ekran yırtilması (tearing) sorunu etkin biçimde önlenmiştir.
+Bununla birlikte, sistem yalnızca emülatör ortamında test edildiğinden gerçek donanım
+üzerindeki performansa ilişkin kesin sonuca ulaşılamamaktadır. Fiziksel donanımda
+gerçekleştirilecek testlerin daha kapsamlı bir değerlendirme fırsatı sunacağı düşünülmektedir.
+6. Uygulama ve Kod Yapısı
+6.1 Klasör Hiyerarşisi
+EmirOS/
+├── src/
+│ ├── boot.s Multiboot giriş noktası, yığın kurulumu
+│ ├── sys.s GDT/IDT flush, ISR stub'ları
+│ ├── kernel.c kernel_main() — başlangıç / ana döngü
+│ ├── gdt.c/h Global Tanımlayıcı Tablo
+│ ├── idt.c/h Kesme Tanımlayıcı Tablo + PIC
+│ ├── timer.c/h PIT 100 Hz
+│ ├── keyboard.c/h Klavye IRQ1 sürücüsü
+│ ├── mouse.c/h Fare IRQ12 sürücüsü
+│ ├── cmos.c/h Gerçek zamanlı saat okuma
+│ ├── speaker.c/h PC hoparlörü (açılış sesi)
+│ ├── gui.c/h Çerçeve tamponu GUI motoru
+│ ├── wm.c/h Pencere Yöneticisi
+│ ├── vfs.c/h Sanal Dosya Sistemi
+│ ├── shell.c/h Kabuk (komut işleme)
+│ ├── string.c/h Çekirdek string kütüphanesi
+│ └── ... Uygulama dosyaları (notepad, calc, ...)
+├── linker.ld Bağlayıcı betiği (1 MB başlangıç)
+├── build.sh Derleme betiği (GCC + GRUB + ISO)
+├── Dockerfile Docker derleme ortamı
+└── EmirOS.iso Çıktı: önyüklenebilir ISO kalıbı
+ outb(0x21, 0x20); // Master offset: 32
+ outb(0xA1, 0x28); // Slave offset: 40
+ // Yalnızca Zamanlayıcı, Klavye, Fare IRQ'larını aç
+ outb(0x21, 0xF8); // Master mask: 11111000
+ outb(0xA1, 0xEF); // Slave mask: 11101111
+ idt_set_gate(32, irq0_timer, 0x08, 0x8E);
+ idt_set_gate(33, irq1_kb, 0x08, 0x8E);
+ idt_set_gate(44, irq12_mouse, 0x08, 0x8E);
+ idt_load();
+}
+6.2 Kritik Kod: Çekirdek Ana Döngüsü
+kernel_main() işlevi, donanım kurulumunun ardından açılış ekranını gösterir, GUI / WM / VFS
+/ Shell'i başlatır ve son olarak sonsuz bir render döngüsüne girer:
+void kernel_main(uint32_t magic, struct multiboot_info* mbd) {
+ gdt_install(); // Bellek segmentleri
+ idt_install(); // Kesme tablosu + PIC
+ timer_install(); // PIT 100 Hz
+ mouse_install(); // PS/2 fare
+ __asm__ __volatile__("sti"); // Kesmeleri aç
+ gui_init(mbd); // VBE çerçeve tamponu
+ // Açılış ekranı ~2 saniye
+ wm_init(w, h); // Pencere Yöneticisi
+ shell_init(); // VFS + Kabuk
+ wm_open(0, "Terminal"); // İlk pencereyi aç
+ while (1) { // Ana render döngüsü
+ gui_render_desktop();
+ if (game_is_active() && now - last >= 15)
+ game_tick(); // 150ms sabit oyun hızı
+ }
+}
+6.3 Kritik Kod: IDT ve PIC Kurulumu
+void idt_install() {
+ // PIC yeniden eşleme (IRQ0-7 -> INT 32-39)
+ outb(0x20, 0x11); outb(0xA0, 0x11);
+7. Test ve Analiz
+7.1 Test Ortamı
+Sistem, her derlemenin ardından QEMU öykünücüsü üzerinde test edilmiştir. QEMU, gerçek
+donanım olmaksızın x86 kesmelerini, VBE modunu ve PS/2 aygıtlarını eksiksiz biçimde
+benzettiğinden pek çok sorun öykünücü üzerinde hızla tespit edilmiştir.
+qemu-system-i386 -cdrom EmirOS.iso -m 256M \
+ -vga std -serial stdio -no-reboot
+7.2 Test Senaryoları
+Senaryo Beklenen Sonuç Durum
+Multiboot başlık doğrulama grub-file onay verir ✓ Geçti
+GUI çerçeve tamponu başlatma 1920x1080 masaüstü görünür ✓ Geçti
+Klavye girişi Terminalde karakter görünür ✓ Geçti
+Fare hareketi İmleç güncellenir, üzerine gelme
+efektleri çalışır
+✓ Geçti
+VFS: mkdir + ls Klasör oluşur, listelenir ✓ Geçti
+VFS: write + cat İçerik kaydedilip okunur ✓ Geçti
+Pencere sürükle Pencere fare ile taşınır ✓ Geçti
+Oyun zamanlayıcı hızı Sabit 150ms hareket aralığı ✓ Geçti
+Açılış sesi PC hoparlörü ton üretir ✓ Geçti
+ו
+TerminalMonitor
+Notepd Boyamа
+12
+esap Mak, Snake
+Dosyalar
+Terminal
+]+[ Klasor olusturuldu: Belgeler
+]+[ Klasor olusturuldu: Resimler
+]+[ Klasor o lusturuldu: Sistem
+EmirOS Shell v4.0 (Ultimate)
+'help' yazin.
+root<
+EMIR Terminal 19:10:18
+01/04
+Emids
+v4.0 Ultimate Editton
+Sistem bilesenleri yuklentyor,..
+ו
+TerminalMonitor eTerminal
+eeBoyama
+Hesap Mak ines i
+555
+irca Temiz
+Notepad Boyamа
+12
+lesap Mak, Snake
+C +/- 7
+7 8 9
+4 5 6
+1 2 3 +
+Dosyalar 0 =
+EMIR Terminal Boyamа Hesap Mak 19:11:56
+01/0
+.. TerminalMonitor Terminal
+eeSnake
+Notepad Boyamа
+12
+esap Mak Snake
+Dosyalar
+EMIR Terminal Snake
+SKOR
+50
+EN YUKSEK
+0
+UZUNLUK
+WASD/Ok Tusu
+0: Cikis
+19:10:43
+01/04
+Hakk inda
+EmirOS v4.0
+eeSistem Monitoru
+Sistem Mon itoru
+Ultimate Edition Terminalt
+Kernel: Freestanding C
+Arch: i386 (x86 32-bit)
+Isletim Sistemi
+EmirOS v4.0 Ultimate
+Mimar i GUI: VESA Framebuffer
+Notepad E
+i386 (x86-32) Boot: Multiboot/GRUB2
+12
+esap Mak.
+WM: Multi-WiupoM v4.0
+Gelistirici: Emiг
+(c) 2026 EmirOS Project
+IAL
+Dos
+root< neofetch
+Calisma Suresi (Uptime)
+Os 2dk 59sn
+Ac ik Pencere
+3
+VFS Bellek Kullan imi
+100 Node
+Cek irdek
+Freestand ing C
+Bootloader
+Multiboot/GRUB2
+Sistem Saati
+19:13:15
+IVI
+OS: EmirOS v4.0 Ultimate
+Kernel: Freestanding C
+Arch: i386 (x86 32-bit)
+Shell: EmirOS Shell v4.0
+GPU: VESA Framebuffer (Accel)
+VFS: RAM Disk (100 node)
+root<
+EMIR Terminal Hakk inda Sistem Mo
+Dosya Yoneticisi
+Term Ana +Dir +File Sil
+it
+Note
+lesap
+Dosya
+Be lge ler
+Res imler
+Sisteп
+hosge ldin. txt
+EmirO5 v3.0
+Uygulamalar
+< Terminal
+Notepad
+Hesap Mak.
+Dosyalar
+Boyamа
+Oyun lar
+Snake
+Sistem
+Mon itor
+Kapat Dosya Yon
+37 B
+KLASOR
+KLASOR
+KLASOR
+DOSYA
+eeSistem Monitoru
+Sistem Mon itoru
+Isletim Sistemi
+Emir0S
+Mimari
+v4.0 Ultimate
+1386 (x86-32)
+Calisma
+Os 2dk 14sn
+Cek irdek
+Freestand ing C
+Bootloader
+Multiboot/GRUB2
+Suresi (Uptime)
+Ac ik Pencere Sistem Saati
+2
+VFS Bellek Kullanimi
+4/ 100 Node
+19:12:29
+19:12:29
+8. Karşılaşılan Zorluklar ve Çözümler
+VBE Çerçeve Tamponu ve Multiboot Entegrasyonu
+Bazı QEMU sürümlerinde VBE modu isteği reddedilip metin modunda başlatılıyordu. Çözüm
+olarak boot.s içindeki Multiboot başlığına grafik modu tanımlayıcı alanları (genişlik,
+yükseklik, bit derinliği) eklenerek GRUB'un VBE modunu zorunlu seçmesi sağlandı.
+Dinamik Bellek Yokluğu (malloc)
+Freestanding çekirdekte standart kütüphane bulunmadığından dinamik bellek ayırma mevcut
+değildir. Bu sorunu aşmak için VFS adına 100 düğümlük statik havuz (memory_pool)
+tasarlandı; bu yapı sıfır öbek parçalanma riskiyle basit ve güvenilir çalışmaktadır.
+PIC IRQ Çakışması
+x86'nın varsayılan PIC yapılandırması IRQ 0-7'yi INT 8-15'e yönlendirir; bu değerler CPU
+içsel kesme vektörleriyle çakışır. Çözüm olarak idt_install() içinde PIC çiftini INT 32-47
+aralığına yeniden eşleyen standart 8259 yapılandırması uygulandı.
+Oyun Hızı Kontrolü
+Ana render döngüsünün hızı donanıma göre değiştiğinden oyun karakteri farklı sistemlerde
+farklı hızlarda hareket ediyordu. PIT zamanlayıcı tabanlı timer_get_ticks() kullanılarak 150ms
+sabit hareket aralığı uygulandı; böylece oyun davranışı donanımdan bağımsız hale getirildi.
+Türkçe Karakter Klavye Sürücüsü
+PS/2 klavye sürücüleri ASCII tabanlı çalışır; Türkçe özgül karakterler (ş, ı, ö, ü, ğ, ç) için özel
+tarama kodu eşleşmesi gerekmektedir. Çözüm olarak keyboard.c içindeki tarama kodu
+tablosuna Türkçe karakter eşlemeleri eklendi.
+9. Sonuç
+EmirOS projesi, işletim sistemlerinin en temel katmanlarından başlayarak tam işlevli bir
+masaüstü ortamına ulaşmanın mümkün olduğunu gösterdi. Proje boyunca; x86 mimari
+ayrıntıları (segmentasyon, korumalı mod, PIC, PIT), donanım düzeyi programlama (çerçeve
+tamponu, PS/2, G/Ç portları) ve sistem yazılımı tasarım örüntüleri (pencere yöneticisi, VFS,
+kabuk) uygulamalı olarak öğrenildi.
+İleride eklenmesi planlanan özellikler arasında fiziksel/sanal bellek sayfalama (paging),
+kullanıcı modu ve sistem çağrısı mekanizması, çoklu süreç/görev zamanlayıcısı, kalıcı
+depolama (ATA disk sürücüsü, FAT32 dosya sistemi) ve TCP/IP ağ yığını yer almaktadır.
+10. Kaynakça
+[1] OSDev Wiki — https://wiki.osdev.org/ (Multiboot, GDT, IDT, PIC, PIT, VBE)
+[2] Tanenbaum, A.S. — Modern Operating Systems (4. baskı)
+[3] Silberschatz, A. vd. — Operating System Concepts (10. baskı)
+[4] Intel® 64 and IA-32 Architectures Software Developer's Manual
+[5] GNU GRUB Kılavuzu — https://www.gnu.org/software/grub/manual/
+[6] QEMU Belgeleri — https://www.qemu.org/docs/master/
+[7] James Molloy's Kernel Development Tutorial —
+http://www.jamesmolloy.co.uk/tutorial_html/

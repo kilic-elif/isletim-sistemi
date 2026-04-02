@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELIF OS Premium</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="desktop">
+        <div class="desktop-icons">
+            <div class="icon active">
+                <i class="fa-brands fa-chrome"></i>
+                <span>İnternet<br>Tarayıcı</span>
+            </div>
+            <div class="icon">
+                <i class="fa-solid fa-terminal"></i>
+                <span>Sistem<br>Terminali</span>
+            </div>
+            <div class="icon">
+                <i class="fa-solid fa-gear"></i>
+                <span>Ayarlar</span>
+            </div>
+            <div class="icon">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>Sistem<br>Hakkında</span>
+            </div>
+            <div class="icon">
+                <i class="fa-solid fa-file-lines"></i>
+                <span>Not Defteri</span>
+            </div>
+            <div class="icon">
+                <i class="fa-solid fa-calculator"></i>
+                <span>Hesap<br>Makinesi</span>
+            </div>
+            <div class="icon folder-icon">
+                <i class="fa-solid fa-folder" style="color: #F8D775; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); font-size: 38px;"></i>
+                <span>Yeni Klasör 1</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="taskbar">
+        <div class="taskbar-left">
+            <div class="start-button"><i class="fa-brands fa-windows"></i></div>
+        </div>
+        <div class="taskbar-right">
+            <div class="tray-item battery-group" id="battery-status">
+                <span id="battery-text">85%</span>
+                <i class="fa-solid fa-battery-three-quarters" style="color:#A1D05B"></i>
+                <i class="fa-solid fa-bolt bolt-icon" style="color:#FFB900; font-size:10px; margin-left:-4px;"></i>
+            </div>
+            <div class="tray-item"><i class="fa-solid fa-volume-high"></i></div>
+            <div class="tray-item"><i class="fa-solid fa-wifi"></i></div>
+            <div class="time-date">
+                <div id="clock">00:00</div>
+                <div id="date">01.04.2026</div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

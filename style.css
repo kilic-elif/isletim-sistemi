@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, System-ui, sans-serif;
+}
+
+body {
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    /* GÖZ KAMAŞTIRICI MAVİ/LACİVERT ARKA PLAN (Elif OS base) */
+    background: linear-gradient(135deg, #1b3a4b 0%, #192a56 40%, #0d1b2a 100%);
+    user-select: none;
+}
+
+.desktop {
+    position: relative;
+    height: calc(100vh - 40px);
+    width: 100%;
+    padding-top: 5px;
+}
+
+.desktop-icons {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 15px;
+    gap: 15px;
+    height: 100%;
+    flex-wrap: wrap;
+    align-content: flex-start;
+}
+
+.icon {
+    width: 85px;
+    height: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 8px;
+    color: #f1f1f1;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.1s ease-in-out;
+    border: 1px solid transparent;
+}
+
+.icon:hover, .icon.active {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.icon i {
+    font-size: 42px;
+    margin-bottom: 8px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5); 
+}
+
+.icon.folder-icon i {
+    font-size: 46px; 
+}
+
+.icon span {
+    font-size: 11px;
+    font-weight: 400;
+    text-align: center;
+    line-height: 1.2;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+/* Görev Çubuğu */
+.taskbar {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 40px;
+    background: rgba(10, 15, 20, 0.95); 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px;
+}
+
+.taskbar-left {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.start-button {
+    color: #e0e0e0;
+    font-size: 20px;
+    padding: 0 10px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.start-button:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.taskbar-right {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    gap: 15px;
+    color: #e0e0e0;
+}
+
+.tray-item {
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    height: 100%;
+    padding: 0 5px;
+}
+
+.tray-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.battery-group {
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.battery-group i.fa-battery-three-quarters {
+    font-size: 16px; 
+}
+
+.time-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #e0e0e0;
+    cursor: pointer;
+    padding: 0 10px;
+    height: 100%;
+    transition: 0.2s;
+    line-height: 1.2;
+}
+
+.time-date:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
